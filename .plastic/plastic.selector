@@ -1,4 +1,0 @@
-repository "MMO/MMO@10171339544063@cloud"
-  path "/"
-    br "/main"
-    co "/main"
