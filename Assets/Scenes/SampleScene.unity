@@ -279,8 +279,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 237247443}
-  - component: {fileID: 237247444}
-  - component: {fileID: 237247445}
   m_Layer: 0
   m_Name: ChacterPhysics
   m_TagString: Untagged
@@ -303,46 +301,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 59322498}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &237247444
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 237247442}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85214b2cca4705e4caf2f2bab367d60d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  controller: {fileID: 1793150882}
-  gravity: -20
-  groundStickForce: -2
---- !u!143 &237247445
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 237247442}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Height: 2
-  m_Radius: 0.5
-  m_SlopeLimit: 45
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.08
-  m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -918,7 +876,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac9fa5b364ca60e42ac92d0336cf5fcb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  motor: {fileID: 237247444}
+  motor: {fileID: 1793150886}
   playerTransform: {fileID: 1793150884}
   animator: {fileID: 1793150883}
   keyForward: 119
@@ -927,15 +885,21 @@ MonoBehaviour:
   keyRight: 100
   sprintKey: 304
   jumpKey: 32
+  squatKey: 99
   moveSpeed: 5
   sprintSpeed: 10
   acceleration: 12
+  sprintAccelerationMultiplier: 1.5
+  squatAccelerationMultiplier: 0.5
   jumpForce: 7
+  jumpMoveSpeed: 3
+  squatMoveSpeed: 2
   rotationSpeed: 300
   modelForwardAxis: 2
   speedFloatName: Speed
   jumpTriggerName: Jump
   groundedBoolName: isGrounded
+  squatBoolName: Squat
 --- !u!1 &1536265988
 GameObject:
   m_ObjectHideFlags: 0
@@ -1096,6 +1060,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 62662f2237a7e7d4faedb2bc443f0351, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1793150882}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 62662f2237a7e7d4faedb2bc443f0351, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1793150886}
   m_SourcePrefab: {fileID: 100100000, guid: 62662f2237a7e7d4faedb2bc443f0351, type: 3}
 --- !u!1 &1793150881 stripped
 GameObject:
@@ -1120,13 +1087,13 @@ CharacterController:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Height: 2
-  m_Radius: 0.5
+  m_Height: 1.8
+  m_Radius: 0.2
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 1, z: 0}
+  m_Center: {x: 0, y: 0.9, z: 0}
 --- !u!95 &1793150883 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 62662f2237a7e7d4faedb2bc443f0351, type: 3}
@@ -1137,6 +1104,21 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 62662f2237a7e7d4faedb2bc443f0351, type: 3}
   m_PrefabInstance: {fileID: 1688688472}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1793150886
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1793150881}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85214b2cca4705e4caf2f2bab367d60d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  controller: {fileID: 1793150882}
+  gravity: -20
+  groundStickForce: -2
 --- !u!1 &1930486422
 GameObject:
   m_ObjectHideFlags: 0

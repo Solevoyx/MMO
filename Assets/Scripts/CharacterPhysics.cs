@@ -52,11 +52,18 @@ public class CharacterPhysicsMotor : MonoBehaviour
         Vector3 targetVelocity = input * targetSpeed;
 
         // Плавное ускорение и торможение
-        smoothVelocity = Vector3.Lerp(
-            smoothVelocity,
-            targetVelocity,
-            1f - Mathf.Exp(-acceleration * Time.deltaTime)
-        );
+        Vector3 velocityDiff = targetVelocity - smoothVelocity;
+
+        if (velocityDiff.sqrMagnitude > 0.0001f)
+        {
+            Vector3 accelStep = Vector3.ClampMagnitude(velocityDiff, acceleration * Time.deltaTime);
+
+            smoothVelocity += accelStep;
+        }
+        else
+        {
+            smoothVelocity = targetVelocity;
+        }
 
         // Обработка гравитации
         if (IsGrounded && verticalVelocity.y < 0f)
