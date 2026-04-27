@@ -149,8 +149,8 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1503407778}
-  - {fileID: 237247443}
   - {fileID: 519931788}
+  - {fileID: 237247443}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &149357170
@@ -885,21 +885,27 @@ MonoBehaviour:
   keyRight: 100
   sprintKey: 304
   jumpKey: 32
-  squatKey: 99
+  crouchKey: 99
+  standUpKeys: 3001000020000000
+  realTimeSpeed: 0
+  realTimeTurnSpeed: 0
   moveSpeed: 5
-  sprintSpeed: 10
+  sprintSpeedMultiplier: 2
+  jumpSpeedMultiplier: 0.5
+  crouchSpeedMultiplier: 0.4
   acceleration: 12
   sprintAccelerationMultiplier: 1.5
-  squatAccelerationMultiplier: 0.5
+  crouchAccelerationMultiplier: 1
   jumpForce: 7
-  jumpMoveSpeed: 3
-  squatMoveSpeed: 2
   rotationSpeed: 300
   modelForwardAxis: 2
   speedFloatName: Speed
+  turnFloatName: TurnSpeed
   jumpTriggerName: Jump
   groundedBoolName: isGrounded
-  squatBoolName: Squat
+  crouchBoolName: isCrouching
+  cam: {fileID: 330585545}
+  inputLockRules: []
 --- !u!1 &1536265988
 GameObject:
   m_ObjectHideFlags: 0
