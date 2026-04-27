@@ -183,16 +183,15 @@ public class TopDownCharacterController : MonoBehaviour
         if (localInput.sqrMagnitude > 1f)
             localInput.Normalize();
 
+        // Берём только горизонтальный угол камеры (yaw)
         Transform reference = movementReference != null ? movementReference : playerTransform;
 
-        Vector3 forward = reference.forward;
-        forward.y = 0f;
-        forward.Normalize();
+        float cameraY = reference.eulerAngles.y;
+        Quaternion cameraYaw = Quaternion.Euler(0f, cameraY, 0f);
 
-        // ВАЖНО: строим right из forward, а не берём reference.right
-        Vector3 right = Vector3.Cross(Vector3.up, forward).normalized;
+        Vector3 forward = cameraYaw * Vector3.forward;
+        Vector3 right = cameraYaw * Vector3.right;
 
-        // Движение относительно ориентира (камеры)
         Vector3 relativeMovement = forward * localInput.z + right * localInput.x;
 
         bool isSprinting = Input.GetKey(sprintKey)
@@ -224,17 +223,16 @@ public class TopDownCharacterController : MonoBehaviour
         if (currentState == ActionState.Crouch)
             currentAcceleration *= crouchAccelerationMultiplier;
 
-        // ❗ СНАЧАЛА поворот по направлению движения
         if (relativeMovement.sqrMagnitude > 0.001f)
         {
             Quaternion lookRotation = Quaternion.LookRotation(relativeMovement);
             Quaternion targetRotation = lookRotation * GetAxisOffset();
 
-            playerTransform.rotation = Quaternion.Slerp(
-    playerTransform.rotation,
-    targetRotation,
-    10f * Time.deltaTime
-);
+            playerTransform.rotation = Quaternion.RotateTowards(
+                playerTransform.rotation,
+                targetRotation,
+                rotationSpeed * Time.deltaTime
+            );
         }
 
         // ❗ И ТОЛЬКО ПОТОМ передаём движение в мотор

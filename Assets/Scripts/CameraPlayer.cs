@@ -13,6 +13,11 @@ public class MMOCamera : MonoBehaviour
     private float currentAngle;
     private float pitch;
 
+    private float smoothAngle;
+    private float smoothPitch;
+
+    public float rotationSmooth = 12f;
+
     [Header("Zoom")]
     public float zoomSpeed = 5f;
     public float minDistance = -14f;
@@ -27,15 +32,13 @@ public class MMOCamera : MonoBehaviour
     public float collisionOffset = 0.2f;
 
     [Header("Smooth")]
-    public float smooth = 12f;
+    public float positionSmooth = 12f;
     public float zoomSmooth = 10f;
-    public float collisionSmooth = 15f;
 
     [Header("Keys")]
     public List<KeyCode> disableCameraKeys = new List<KeyCode>();
 
     private bool cameraActive = false;
-
     private Vector3 positionVelocity;
 
     void Awake()
@@ -76,20 +79,24 @@ public class MMOCamera : MonoBehaviour
             cam.transform.position,
             desiredPos,
             ref positionVelocity,
-            1f / smooth
+            1f / positionSmooth
         );
 
-        cam.transform.rotation = Quaternion.Euler(pitch, currentAngle, 0f);
+        // ПЛАВНЫЙ поворот (исправляет дерганье)
+        smoothAngle = Mathf.Lerp(smoothAngle, currentAngle, rotationSmooth * Time.deltaTime);
+        smoothPitch = Mathf.Lerp(smoothPitch, pitch, rotationSmooth * Time.deltaTime);
+
+        cam.transform.rotation = Quaternion.Euler(smoothPitch, smoothAngle, 0f);
     }
 
     void HandleMouseRotation()
     {
-        float mouseX = Input.GetAxis("Mouse X");
-        float mouseY = Input.GetAxis("Mouse Y");
+        float mouseX = Input.GetAxisRaw("Mouse X");
+        float mouseY = Input.GetAxisRaw("Mouse Y");
 
-        currentAngle += mouseX * mouseSensitivity * 100f * Time.deltaTime;
+        currentAngle += mouseX * mouseSensitivity;
+        pitch -= mouseY * mouseSensitivity;
 
-        pitch -= mouseY * mouseSensitivity * 100f * Time.deltaTime;
         pitch = Mathf.Clamp(pitch, -60f, 60f);
     }
 
@@ -116,7 +123,6 @@ public class MMOCamera : MonoBehaviour
 
         Vector3 basePos = target.position + rotated + Vector3.up * offset.y;
 
-        // --- Obstacle avoidance НЕ ломает offset ---
         Vector3 dir = (basePos - target.position).normalized;
         float dist = Vector3.Distance(target.position, basePos);
 
