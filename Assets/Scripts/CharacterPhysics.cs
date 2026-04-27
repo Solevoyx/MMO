@@ -20,7 +20,7 @@ public class CharacterPhysicsMotor : MonoBehaviour
 
     [Header("Gravity Settings")]
     public float gravity = -20f;
-    public float groundStickForce = -2f; // Сила "прилипания" к земле
+   
 
     // Свойство для получения состояния земли в контроллере
     public bool IsGrounded => controller.isGrounded;
@@ -47,17 +47,14 @@ public class CharacterPhysicsMotor : MonoBehaviour
 
     void ApplyMovement()
     {
-        // Рассчитываем целевую скорость
         float targetSpeed = sprint ? sprintSpeed : moveSpeed;
         Vector3 targetVelocity = input * targetSpeed;
 
-        // Плавное ускорение и торможение
         Vector3 velocityDiff = targetVelocity - smoothVelocity;
 
         if (velocityDiff.sqrMagnitude > 0.0001f)
         {
             Vector3 accelStep = Vector3.ClampMagnitude(velocityDiff, acceleration * Time.deltaTime);
-
             smoothVelocity += accelStep;
         }
         else
@@ -65,30 +62,24 @@ public class CharacterPhysicsMotor : MonoBehaviour
             smoothVelocity = targetVelocity;
         }
 
-        // Обработка гравитации
-        if (IsGrounded && verticalVelocity.y < 0f)
-        {
-            verticalVelocity.y = groundStickForce;
-        }
-
-        // Обработка прыжка
+        // Прыжок
         if (jumpRequested && IsGrounded)
         {
             verticalVelocity.y = jumpForce;
             jumpRequested = false;
         }
 
+        // Гравитация
         verticalVelocity.y += gravity * Time.deltaTime;
 
-        // Итоговый вектор движения
+        // СТАБИЛИЗАЦИЯ ЗЕМЛИ (ОДИН РАЗ!)
+        if (IsGrounded && verticalVelocity.y < 0f)
+        {
+            verticalVelocity.y = -1f;
+        }
+
         Vector3 finalVelocity = smoothVelocity + verticalVelocity;
         controller.Move(finalVelocity * Time.deltaTime);
-
-        // Сбрасываем запрос на прыжок в конце кадра, если мы не на земле
-        if (jumpRequested && !IsGrounded)
-        {
-            jumpRequested = false;
-        }
     }
 
     public void RequestJump(float force)

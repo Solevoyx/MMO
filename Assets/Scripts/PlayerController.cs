@@ -35,6 +35,7 @@ public class TopDownCharacterController : MonoBehaviour
     [Header("Rotation Settings")]
     public float rotationSpeed = 720f;
     public ForwardAxis modelForwardAxis = ForwardAxis.X;
+    public Transform movementReference;
 
     [Header("Animation Parameters Names")]
     public string speedFloatName = "Speed";
@@ -42,9 +43,6 @@ public class TopDownCharacterController : MonoBehaviour
     public string jumpTriggerName = "Jump";
     public string groundedBoolName = "isGrounded";
     public string crouchBoolName = "isCrouching";
-
-    [Header("Camera")]
-    [SerializeField] private Camera cam;
 
     [Header("Input Lock System")]
     public InputLockRule[] inputLockRules;
@@ -83,12 +81,6 @@ public class TopDownCharacterController : MonoBehaviour
             playerTransform = motor.transform;
 
         lastYRotation = playerTransform.eulerAngles.y;
-
-        if (cam == null)
-            cam = Camera.main;
-
-        if (cam == null)
-            Debug.LogWarning("Camera is not assigned!");
     }
 
     void Update()
@@ -99,7 +91,6 @@ public class TopDownCharacterController : MonoBehaviour
         HandleJump();
         HandleCrouch();
         HandleMovement();
-        HandleRotationToMouseYOnly();
         HandleAnimation();
 
         realTimeSpeed = motor.GetHorizontalSpeed();
@@ -192,8 +183,17 @@ public class TopDownCharacterController : MonoBehaviour
         if (localInput.sqrMagnitude > 1f)
             localInput.Normalize();
 
-        Quaternion logicalRotation = playerTransform.rotation * Quaternion.Inverse(GetAxisOffset());
-        Vector3 relativeMovement = logicalRotation * localInput;
+        Transform reference = movementReference != null ? movementReference : playerTransform;
+
+        Vector3 forward = reference.forward;
+        forward.y = 0f;
+        forward.Normalize();
+
+        // ВАЖНО: строим right из forward, а не берём reference.right
+        Vector3 right = Vector3.Cross(Vector3.up, forward).normalized;
+
+        // Движение относительно ориентира (камеры)
+        Vector3 relativeMovement = forward * localInput.z + right * localInput.x;
 
         bool isSprinting = Input.GetKey(sprintKey)
                            && !IsBlocked(InputBlockType.Sprint)
@@ -224,6 +224,20 @@ public class TopDownCharacterController : MonoBehaviour
         if (currentState == ActionState.Crouch)
             currentAcceleration *= crouchAccelerationMultiplier;
 
+        // ❗ СНАЧАЛА поворот по направлению движения
+        if (relativeMovement.sqrMagnitude > 0.001f)
+        {
+            Quaternion lookRotation = Quaternion.LookRotation(relativeMovement);
+            Quaternion targetRotation = lookRotation * GetAxisOffset();
+
+            playerTransform.rotation = Quaternion.Slerp(
+    playerTransform.rotation,
+    targetRotation,
+    10f * Time.deltaTime
+);
+        }
+
+        // ❗ И ТОЛЬКО ПОТОМ передаём движение в мотор
         motor.SetMoveData(
             relativeMovement,
             isSprinting,
@@ -250,32 +264,6 @@ public class TopDownCharacterController : MonoBehaviour
         }
     }
 
-    void HandleRotationToMouseYOnly()
-    {
-        if (cam == null) return;
-
-        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
-        Plane plane = new Plane(Vector3.up, playerTransform.position);
-
-        if (plane.Raycast(ray, out float distance))
-        {
-            Vector3 point = ray.GetPoint(distance);
-            Vector3 direction = point - playerTransform.position;
-            direction.y = 0f;
-
-            if (direction.sqrMagnitude < 0.001f) return;
-
-            Quaternion lookRotation = Quaternion.LookRotation(direction);
-            Quaternion targetRotation = lookRotation * GetAxisOffset();
-
-            playerTransform.rotation = Quaternion.RotateTowards(
-                playerTransform.rotation,
-                targetRotation,
-                rotationSpeed * Time.deltaTime
-            );
-        }
-    }
-
     void HandleAnimation()
     {
         if (animator == null) return;
@@ -292,7 +280,9 @@ public class TopDownCharacterController : MonoBehaviour
         float currentY = playerTransform.eulerAngles.y;
         float delta = Mathf.DeltaAngle(lastYRotation, currentY);
 
-        realTimeTurnSpeed = Mathf.Abs(delta) / Time.deltaTime;
+        realTimeTurnSpeed = Time.deltaTime > 0f
+     ? Mathf.Abs(delta) / Time.deltaTime
+     : 0f;
         lastYRotation = currentY;
 
         if (!string.IsNullOrEmpty(turnFloatName))
