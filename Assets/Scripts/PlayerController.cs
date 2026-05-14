@@ -4,6 +4,21 @@ public class TopDownCharacterController : MonoBehaviour
 {
     public enum ForwardAxis { X, MinusX, Z, MinusZ }
 
+    [System.Serializable]
+    public struct AttackTriggerData
+    {
+        public string triggerName;            // Имя триггера анимации
+
+        [Header("Timers")]
+        public float preDashDelay;            // ЗАМАХ: задержка до начала движения (в секундах)
+        public float dashDuration;            // РЫВОК: сколько секунд длится движение вперед
+        public float postDashDelay;           // ВОССТАНОВЛЕНИЕ: задержка после движения до конца атаки
+
+        [Header("Movement Settings")]
+        public float moveSpeedMultiplier;     // Множитель скорости рывка
+        public float accelerationMultiplier;  // Множитель резкости старта рывка
+    }
+
     [Header("Components")]
     public CharacterPhysicsMotor motor;
     public Transform playerTransform;
@@ -17,11 +32,11 @@ public class TopDownCharacterController : MonoBehaviour
     public KeyCode sprintKey = KeyCode.LeftShift;
     public KeyCode jumpKey = KeyCode.Space;
     public KeyCode crouchKey = KeyCode.C;
+    public KeyCode attackKey = KeyCode.Mouse0;
     public KeyCode[] standUpKeys;
 
     [Header("Movement Settings")]
     [SerializeField] private float realTimeSpeed;
-    [SerializeField] private float realTimeTurnSpeed;
 
     public float moveSpeed = 5f;
     public float sprintSpeedMultiplier = 1.8f;
@@ -39,83 +54,41 @@ public class TopDownCharacterController : MonoBehaviour
 
     [Header("Animation Parameters Names")]
     public string speedFloatName = "Speed";
-    public string turnFloatName = "TurnSpeed";
     public string jumpTriggerName = "Jump";
     public string groundedBoolName = "isGrounded";
     public string crouchBoolName = "isCrouching";
+    public string attackingBoolName = "isAttack";
 
-    [Header("Input Lock System")]
-    public InputLockRule[] inputLockRules;
+    public AttackTriggerData[] attackTriggerNames;
 
-    [System.Flags]
-    public enum InputBlockType
-    {
-        None = 0,
-        Move = 1 << 0,
-        Sprint = 1 << 1,
-        Jump = 1 << 2,
-        Crouch = 1 << 3
-    }
-
-    public enum ActionState
-    {
-        Run,
-        Jump,
-        Crouch
-    }
-
-    [System.Serializable]
-    public class InputLockRule
-    {
-        public ActionState state;
-        public InputBlockType blockedInputs;
-    }
-
-    private ActionState currentState;
-    private float lastYRotation;
     private bool isCrouching;
+    private bool isAttacking;
+    private bool isDashing;
+    private int currentAttackIndex;
+
+    private float preDashTimer;
+    private float dashTimer;
+    private float postDashTimer;
+
+    private Vector3 attackMoveDirection;
 
     void Awake()
     {
         if (motor != null && playerTransform == null)
             playerTransform = motor.transform;
-
-        lastYRotation = playerTransform.eulerAngles.y;
     }
 
     void Update()
     {
         if (motor == null || playerTransform == null) return;
 
-        UpdateState();
         HandleJump();
         HandleCrouch();
+        HandleAttack();
         HandleMovement();
         HandleAnimation();
 
         realTimeSpeed = motor.GetHorizontalSpeed();
-    }
-
-    void UpdateState()
-    {
-        if (!motor.IsGrounded)
-            currentState = ActionState.Jump;
-        else if (isCrouching)
-            currentState = ActionState.Crouch;
-        else
-            currentState = ActionState.Run;
-    }
-
-    bool IsBlocked(InputBlockType type)
-    {
-        for (int i = 0; i < inputLockRules.Length; i++)
-        {
-            if (inputLockRules[i].state != currentState)
-                continue;
-
-            return (inputLockRules[i].blockedInputs & type) != 0;
-        }
-        return false;
     }
 
     bool IsStandUpPressed()
@@ -130,8 +103,7 @@ public class TopDownCharacterController : MonoBehaviour
 
     void HandleCrouch()
     {
-        if (IsBlocked(InputBlockType.Crouch)) return;
-        if (currentState == ActionState.Jump) return;
+        if (!motor.IsGrounded || isAttacking) return;
 
         if (isCrouching && Input.GetKey(sprintKey))
         {
@@ -158,9 +130,7 @@ public class TopDownCharacterController : MonoBehaviour
 
     void HandleJump()
     {
-        if (IsBlocked(InputBlockType.Jump)) return;
-
-        if (Input.GetKeyDown(jumpKey) && motor.IsGrounded && !isCrouching)
+        if (Input.GetKeyDown(jumpKey) && motor.IsGrounded && !isCrouching && !isAttacking)
         {
             motor.RequestJump(jumpForce);
 
@@ -169,9 +139,161 @@ public class TopDownCharacterController : MonoBehaviour
         }
     }
 
+    void HandleAttack()
+    {
+        if (animator == null || attackTriggerNames == null || attackTriggerNames.Length == 0)
+            return;
+
+        // 1. СТАРТ С НУЛЯ: Новая атака может начаться ТОЛЬКО если персонаж в данный момент НЕ атакует
+        if (!isAttacking && Input.GetKeyDown(attackKey) && motor.IsGrounded)
+        {
+            currentAttackIndex = 0;
+            StartNextAttack();
+            return;
+        }
+
+        // Если мы уже в процессе атаки — любые новые одиночные клики (GetKeyDown) полностью игнорируются
+        if (!isAttacking) return;
+
+        AttackTriggerData currentStep = attackTriggerNames[currentAttackIndex];
+
+        // --- ЛОГИКА ОБРАБОТКИ ТРЁХ ФАЗ ---
+
+        // ФАЗА 1: Замах
+        if (preDashTimer > 0f)
+        {
+            preDashTimer -= Time.deltaTime;
+            attackMoveDirection = GetAttackDirectionInput();
+            motor.SetMoveData(Vector3.zero, false, 0f, 0f, acceleration);
+
+            if (preDashTimer <= 0f && currentStep.dashDuration > 0f)
+            {
+                isDashing = true;
+            }
+        }
+        // ФАЗА 2: Рывок (Активная фаза удара)
+        else if (isDashing)
+        {
+            dashTimer -= Time.deltaTime;
+
+            if (dashTimer <= 0f)
+            {
+                isDashing = false;
+            }
+            else
+            {
+                motor.SetMoveData(
+                    attackMoveDirection,
+                    false,
+                    moveSpeed * currentStep.moveSpeedMultiplier,
+                    moveSpeed * currentStep.moveSpeedMultiplier,
+                    acceleration * currentStep.accelerationMultiplier
+                );
+            }
+        }
+        // ФАЗА 3: Восстановление (Эндлаг)
+        else if (postDashTimer > 0f)
+        {
+            postDashTimer -= Time.deltaTime;
+            motor.SetMoveData(Vector3.zero, false, 0f, 0f, acceleration);
+        }
+
+        // --- ПОВОРОТ ПЕРСОНАЖА ---
+        if (preDashTimer > 0f || isDashing)
+        {
+            Quaternion lookRotation = Quaternion.LookRotation(attackMoveDirection);
+            Quaternion targetRotation = lookRotation * GetAxisOffset();
+            playerTransform.rotation = Quaternion.RotateTowards(
+                playerTransform.rotation,
+                targetRotation,
+                rotationSpeed * Time.deltaTime
+            );
+        }
+
+        // --- ЖЕСТКАЯ ПРОВЕРКА ЗАВЕРШЕНИЯ ВСЕЙ АТАКИ ---
+        if (preDashTimer <= 0f && !isDashing && postDashTimer <= 0f)
+        {
+            // Переходим к следующему удару комбо, только если кнопка УДЕРЖИВАЕТСЯ в момент окончания восстановления
+            if (Input.GetKey(attackKey))
+            {
+                currentAttackIndex++;
+                if (currentAttackIndex >= attackTriggerNames.Length)
+                    currentAttackIndex = 0;
+
+                StartNextAttack();
+            }
+            else
+            {
+                // Если кнопка отпущена — полностью выходим из режима атаки и сбрасываем комбо-индекс
+                isAttacking = false;
+                isDashing = false;
+                currentAttackIndex = 0;
+            }
+        }
+    }
+
+    void StartNextAttack()
+    {
+        isAttacking = true;
+        isCrouching = false;
+        isDashing = false;
+
+        AttackTriggerData currentStep = attackTriggerNames[currentAttackIndex];
+
+        preDashTimer = currentStep.preDashDelay;
+        dashTimer = currentStep.dashDuration;
+        postDashTimer = currentStep.postDashDelay;
+
+        if (preDashTimer <= 0f && dashTimer > 0f)
+        {
+            isDashing = true;
+        }
+
+        if (!string.IsNullOrEmpty(currentStep.triggerName))
+        {
+            animator.SetTrigger(currentStep.triggerName);
+        }
+
+        attackMoveDirection = GetAttackDirectionInput();
+    }
+
+    Vector3 GetAttackDirectionInput()
+    {
+        Vector3 localInput = Vector3.zero;
+        if (Input.GetKey(keyForward)) localInput.z += 1f;
+        if (Input.GetKey(keyBackward)) localInput.z -= 1f;
+        if (Input.GetKey(keyLeft)) localInput.x -= 1f;
+        if (Input.GetKey(keyRight)) localInput.x += 1f;
+
+        if (movementReference != null)
+        {
+            float cameraY = movementReference.eulerAngles.y;
+            Quaternion cameraYaw = Quaternion.Euler(0f, cameraY, 0f);
+
+            if (localInput.sqrMagnitude > 0.001f)
+            {
+                localInput.Normalize();
+                Vector3 forward = cameraYaw * Vector3.forward;
+                Vector3 right = cameraYaw * Vector3.right;
+                return (forward * localInput.z + right * localInput.x).normalized;
+            }
+            return cameraYaw * Vector3.forward;
+        }
+        else
+        {
+            if (localInput.sqrMagnitude > 0.001f)
+            {
+                return localInput.normalized;
+            }
+            Quaternion logicalRotation = playerTransform.rotation * Quaternion.Inverse(GetAxisOffset());
+            return logicalRotation * Vector3.forward;
+        }
+    }
+
     void HandleMovement()
     {
-        if (IsBlocked(InputBlockType.Move)) return;
+        if (isAttacking || isDashing)
+            return;
 
         Vector3 localInput = Vector3.zero;
 
@@ -183,7 +305,6 @@ public class TopDownCharacterController : MonoBehaviour
         if (localInput.sqrMagnitude > 1f)
             localInput.Normalize();
 
-        // Берём только горизонтальный угол камеры (yaw)
         Transform reference = movementReference != null ? movementReference : playerTransform;
 
         float cameraY = reference.eulerAngles.y;
@@ -194,18 +315,16 @@ public class TopDownCharacterController : MonoBehaviour
 
         Vector3 relativeMovement = forward * localInput.z + right * localInput.x;
 
-        bool isSprinting = Input.GetKey(sprintKey)
-                           && !IsBlocked(InputBlockType.Sprint)
-                           && currentState != ActionState.Crouch;
+        bool isSprinting = Input.GetKey(sprintKey) && !isCrouching;
 
         float targetMoveSpeed = moveSpeed;
 
-        if (currentState == ActionState.Crouch)
+        if (isCrouching)
         {
             targetMoveSpeed *= crouchSpeedMultiplier;
             isSprinting = false;
         }
-        else if (currentState == ActionState.Jump)
+        else if (!motor.IsGrounded)
         {
             targetMoveSpeed *= jumpSpeedMultiplier;
             isSprinting = false;
@@ -217,10 +336,10 @@ public class TopDownCharacterController : MonoBehaviour
 
         float currentAcceleration = acceleration;
 
-        if (isSprinting && currentState != ActionState.Jump)
+        if (isSprinting && motor.IsGrounded)
             currentAcceleration *= sprintAccelerationMultiplier;
 
-        if (currentState == ActionState.Crouch)
+        if (isCrouching)
             currentAcceleration *= crouchAccelerationMultiplier;
 
         if (relativeMovement.sqrMagnitude > 0.001f)
@@ -235,7 +354,6 @@ public class TopDownCharacterController : MonoBehaviour
             );
         }
 
-        // ❗ И ТОЛЬКО ПОТОМ передаём движение в мотор
         motor.SetMoveData(
             relativeMovement,
             isSprinting,
@@ -275,18 +393,7 @@ public class TopDownCharacterController : MonoBehaviour
         if (!string.IsNullOrEmpty(crouchBoolName))
             animator.SetBool(crouchBoolName, isCrouching);
 
-        float currentY = playerTransform.eulerAngles.y;
-        float delta = Mathf.DeltaAngle(lastYRotation, currentY);
-
-        realTimeTurnSpeed = Time.deltaTime > 0f
-     ? Mathf.Abs(delta) / Time.deltaTime
-     : 0f;
-        lastYRotation = currentY;
-
-        if (!string.IsNullOrEmpty(turnFloatName))
-        {
-            float turnSpeedNormalized = Mathf.InverseLerp(0f, rotationSpeed, realTimeTurnSpeed);
-            animator.SetFloat(turnFloatName, turnSpeedNormalized);
-        }
+        if (!string.IsNullOrEmpty(attackingBoolName))
+            animator.SetBool(attackingBoolName, isAttacking);
     }
 }
