@@ -904,26 +904,26 @@ MonoBehaviour:
   attackTriggerNames:
   - triggerName: Attack
     preDashDelay: 0.5
-    dashDuration: 0.5
+    dashDuration: 0.2
     postDashDelay: 0.5
     moveSpeedMultiplier: 0.1
     accelerationMultiplier: 1000
   - triggerName: Attack1
     preDashDelay: 0.5
-    dashDuration: 2.2
+    dashDuration: 1.8
     postDashDelay: 0.5
     moveSpeedMultiplier: 0.1
     accelerationMultiplier: 1000
   - triggerName: Attack2
     preDashDelay: 0.5
-    dashDuration: 2.62
+    dashDuration: 2.2
     postDashDelay: 0.5
     moveSpeedMultiplier: 0.1
     accelerationMultiplier: 1000
   - triggerName: Attack3
     preDashDelay: 0.5
     dashDuration: 0.15
-    postDashDelay: 0.5
+    postDashDelay: 0
     moveSpeedMultiplier: 0.1
     accelerationMultiplier: 1000
 --- !u!1 &1536265988
