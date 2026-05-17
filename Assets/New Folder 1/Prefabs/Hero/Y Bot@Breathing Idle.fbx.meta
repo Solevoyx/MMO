@@ -3,7 +3,17 @@ guid: afdd3cf7aef51c14f8f668a5da893451
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Alpha_Body_MAT
+    second: {fileID: 2100000, guid: 36356d293d3a1b14bbda4d347d9d3848, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Alpha_Joints_MAT
+    second: {fileID: 2100000, guid: 0d2e922bcfd4d284096fd28df419e088, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

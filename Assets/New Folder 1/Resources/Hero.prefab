@@ -145,7 +145,6 @@ CharacterController:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -296,7 +295,7 @@ PrefabInstance:
     - target: {fileID: -7813590141776298306, guid: afdd3cf7aef51c14f8f668a5da893451, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: a0a07db9c3c0737488ffec56fc7d60dd, type: 2}
+      objectReference: {fileID: 2100000, guid: 0d2e922bcfd4d284096fd28df419e088, type: 2}
     - target: {fileID: 919132149155446097, guid: afdd3cf7aef51c14f8f668a5da893451, type: 3}
       propertyPath: m_Name
       value: Model
@@ -304,7 +303,7 @@ PrefabInstance:
     - target: {fileID: 5822821947120931875, guid: afdd3cf7aef51c14f8f668a5da893451, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 66d3ecd48ac60a14bbf41dbee6556deb, type: 2}
+      objectReference: {fileID: 2100000, guid: 36356d293d3a1b14bbda4d347d9d3848, type: 2}
     - target: {fileID: 5866666021909216657, guid: afdd3cf7aef51c14f8f668a5da893451, type: 3}
       propertyPath: m_Controller
       value: 

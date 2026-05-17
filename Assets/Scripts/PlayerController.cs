@@ -35,6 +35,10 @@ public class TopDownCharacterController : MonoBehaviour
     public KeyCode attackKey = KeyCode.Mouse0;
     public KeyCode[] standUpKeys;
 
+    [Header("Input Buffer Settings")]
+    [Tooltip("Время (в секундах), в течение которого нажатие кнопки сохраняется в памяти")]
+    public float inputBufferTime = 0.25f;
+
     [Header("Movement Settings")]
     [SerializeField] private float realTimeSpeed;
 
@@ -49,6 +53,7 @@ public class TopDownCharacterController : MonoBehaviour
 
     [Header("Rotation Settings")]
     public float rotationSpeed = 720f;
+    public float rotationSpeedMultiplier;
     public ForwardAxis modelForwardAxis = ForwardAxis.X;
     public Transform movementReference;
 
@@ -72,6 +77,11 @@ public class TopDownCharacterController : MonoBehaviour
 
     private Vector3 attackMoveDirection;
 
+    // Таймеры буфера ввода
+    private float jumpBufferTimer;
+    private float crouchBufferTimer;
+    private float attackBufferTimer;
+
     void Awake()
     {
         if (motor != null && playerTransform == null)
@@ -82,6 +92,8 @@ public class TopDownCharacterController : MonoBehaviour
     {
         if (motor == null || playerTransform == null) return;
 
+        UpdateInputBuffers();
+
         HandleJump();
         HandleCrouch();
         HandleAttack();
@@ -89,6 +101,19 @@ public class TopDownCharacterController : MonoBehaviour
         HandleAnimation();
 
         realTimeSpeed = motor.GetHorizontalSpeed();
+    }
+
+    // НОВЫЙ МЕТОД: Обновление таймеров памяти нажатий
+    void UpdateInputBuffers()
+    {
+        if (Input.GetKeyDown(jumpKey)) jumpBufferTimer = inputBufferTime;
+        else if (jumpBufferTimer > 0f) jumpBufferTimer -= Time.deltaTime;
+
+        if (Input.GetKeyDown(crouchKey)) crouchBufferTimer = inputBufferTime;
+        else if (crouchBufferTimer > 0f) crouchBufferTimer -= Time.deltaTime;
+
+        if (Input.GetKeyDown(attackKey)) attackBufferTimer = inputBufferTime;
+        else if (attackBufferTimer > 0f) attackBufferTimer -= Time.deltaTime;
     }
 
     bool IsStandUpPressed()
@@ -117,8 +142,10 @@ public class TopDownCharacterController : MonoBehaviour
             return;
         }
 
-        if (Input.GetKeyDown(crouchKey) && !Input.GetKey(sprintKey))
+        // ИСПОЛЬЗУЕМ БУФЕР ВМЕСТО GetKeyDown
+        if (crouchBufferTimer > 0f && !Input.GetKey(sprintKey))
         {
+            crouchBufferTimer = 0f; // Сбрасываем буфер после использования
             SetCrouch(!isCrouching);
         }
     }
@@ -130,8 +157,10 @@ public class TopDownCharacterController : MonoBehaviour
 
     void HandleJump()
     {
-        if (Input.GetKeyDown(jumpKey) && motor.IsGrounded && !isCrouching && !isAttacking)
+        // ИСПОЛЬЗУЕМ БУФЕР ВМЕСТО GetKeyDown
+        if (jumpBufferTimer > 0f && motor.IsGrounded && !isCrouching && !isAttacking)
         {
+            jumpBufferTimer = 0f; // Сбрасываем буфер после использования
             motor.RequestJump(jumpForce);
 
             if (animator != null && !string.IsNullOrEmpty(jumpTriggerName))
@@ -144,22 +173,21 @@ public class TopDownCharacterController : MonoBehaviour
         if (animator == null || attackTriggerNames == null || attackTriggerNames.Length == 0)
             return;
 
-        // 1. СТАРТ С НУЛЯ: Новая атака может начаться ТОЛЬКО если персонаж в данный момент НЕ атакует
-        if (!isAttacking && Input.GetKeyDown(attackKey) && motor.IsGrounded)
+        // 1. СТАРТ С НУЛЯ: ИСПОЛЬЗУЕМ БУФЕР ВМЕСТО GetKeyDown
+        if (!isAttacking && attackBufferTimer > 0f && motor.IsGrounded)
         {
+            attackBufferTimer = 0f; // Сбрасываем буфер после использования
             currentAttackIndex = 0;
             StartNextAttack();
             return;
         }
 
-        // Если мы уже в процессе атаки — любые новые одиночные клики (GetKeyDown) полностью игнорируются
         if (!isAttacking) return;
 
         AttackTriggerData currentStep = attackTriggerNames[currentAttackIndex];
 
         // --- ЛОГИКА ОБРАБОТКИ ТРЁХ ФАЗ ---
 
-        // ФАЗА 1: Замах
         if (preDashTimer > 0f)
         {
             preDashTimer -= Time.deltaTime;
@@ -171,7 +199,6 @@ public class TopDownCharacterController : MonoBehaviour
                 isDashing = true;
             }
         }
-        // ФАЗА 2: Рывок (Активная фаза удара)
         else if (isDashing)
         {
             dashTimer -= Time.deltaTime;
@@ -191,31 +218,39 @@ public class TopDownCharacterController : MonoBehaviour
                 );
             }
         }
-        // ФАЗА 3: Восстановление (Эндлаг)
         else if (postDashTimer > 0f)
         {
             postDashTimer -= Time.deltaTime;
             motor.SetMoveData(Vector3.zero, false, 0f, 0f, acceleration);
         }
 
-        // --- ПОВОРОТ ПЕРСОНАЖА ---
-        if (preDashTimer > 0f || isDashing)
+        // --- ПОВОРОТ ПЕРСОНАЖА С ГЛОБАЛЬНЫМ МНОЖИТЕЛЕМ ДЛЯ ВСЕХ АТАК ---
+        if (isAttacking)
         {
-            Quaternion lookRotation = Quaternion.LookRotation(attackMoveDirection);
-            Quaternion targetRotation = lookRotation * GetAxisOffset();
-            playerTransform.rotation = Quaternion.RotateTowards(
-                playerTransform.rotation,
-                targetRotation,
-                rotationSpeed * Time.deltaTime
-            );
+            Vector3 currentLookDirection = GetAttackDirectionInput();
+
+            if (currentLookDirection.sqrMagnitude > 0.001f)
+            {
+                Quaternion lookRotation = Quaternion.LookRotation(currentLookDirection);
+                Quaternion targetRotation = lookRotation * GetAxisOffset();
+
+                // Умножаем глобальную скорость на твой глобальный множитель
+                playerTransform.rotation = Quaternion.RotateTowards(
+                    playerTransform.rotation,
+                    targetRotation,
+                    rotationSpeed * rotationSpeedMultiplier * Time.deltaTime
+                );
+            }
         }
 
         // --- ЖЕСТКАЯ ПРОВЕРКА ЗАВЕРШЕНИЯ ВСЕЙ АТАКИ ---
         if (preDashTimer <= 0f && !isDashing && postDashTimer <= 0f)
         {
-            // Переходим к следующему удару комбо, только если кнопка УДЕРЖИВАЕТСЯ в момент окончания восстановления
-            if (Input.GetKey(attackKey))
+            // Переходим к следующему удару комбо, если кнопка УДЕРЖИВАЕТСЯ ИЛИ нажатие сохранено в буфере
+            if (Input.GetKey(attackKey) || attackBufferTimer > 0f)
             {
+                attackBufferTimer = 0f; // Очищаем буфер, чтобы нажатие не "перетекло" дальше
+
                 currentAttackIndex++;
                 if (currentAttackIndex >= attackTriggerNames.Length)
                     currentAttackIndex = 0;
@@ -224,7 +259,6 @@ public class TopDownCharacterController : MonoBehaviour
             }
             else
             {
-                // Если кнопка отпущена — полностью выходим из режима атаки и сбрасываем комбо-индекс
                 isAttacking = false;
                 isDashing = false;
                 currentAttackIndex = 0;

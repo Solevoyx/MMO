@@ -1,31 +1,31 @@
 using Photon.Pun;
 using Photon.Realtime;
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class RoomListing : MonoBehaviour
 {
-    public TMP_Text roomNameText; // Ссылка на TMP_Text для отображения имени комнаты
-    public Button connectButton; // Ссылка на кнопку подключения
+    [SerializeField] private TMP_Text roomNameText;
+    [SerializeField] private Button connectButton;
 
-    private RoomInfo roomInfo; // Информация о комнате
+    private string _currentRoomName;
 
-    // Метод для инициализации списка комнат
-    public void SetRoomInfo(RoomInfo info)
+    private void Awake()
     {
-        roomInfo = info;
-        roomNameText.text = roomInfo.Name; // Устанавливаем имя комнаты
-
-        // Добавляем слушатель нажатия кнопки
-        connectButton.onClick.AddListener(() => ConnectToRoom());
+        // Подписываемся в Awake один раз. Это предотвращает утечки памяти 
+        // и проблемы с замыканиями (closures), которые были в старом коде.
+        connectButton.onClick.AddListener(ConnectToRoom);
     }
 
-    // Метод для подключения к комнате
+    public void SetRoomInfo(RoomInfo info)
+    {
+        _currentRoomName = info.Name;
+        roomNameText.text = $"{info.Name} ({info.PlayerCount}/{info.MaxPlayers})";
+    }
+
     private void ConnectToRoom()
     {
-        PhotonNetwork.JoinRoom(roomInfo.Name); // Подключаемся к комнате по имени
+        PhotonNetwork.JoinRoom(_currentRoomName);
     }
 }
