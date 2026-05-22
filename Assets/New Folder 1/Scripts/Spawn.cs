@@ -1,16 +1,15 @@
 using Photon.Pun;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Spawn : MonoBehaviour
 {
-    [SerializeField, Tooltip("Точное имя префаба игрока в папке Resources")]
-    private string prefabName = "PlayerPrefab";
-
+    [SerializeField] private GameObject _player;
     [SerializeField] private Transform _spawn;
 
-    private void Start()
+    public void Start()
     {
-        // Теперь переименование объекта на сцене не сломает спавн
-        PhotonNetwork.Instantiate(prefabName, _spawn.position, Quaternion.identity);
+        PhotonNetwork.Instantiate(_player.name, _spawn.position, Quaternion.identity);
     }
 }

@@ -1,22 +1,19 @@
-﻿using UnityEngine;
+﻿using Photon.Pun;
+using UnityEngine;
 
-public class TopDownCharacterController : MonoBehaviour
+public class TopDownCharacterController : MonoBehaviourPun
 {
     public enum ForwardAxis { X, MinusX, Z, MinusZ }
 
     [System.Serializable]
     public struct AttackTriggerData
     {
-        public string triggerName;            // Имя триггера анимации
-
-        [Header("Timers")]
-        public float preDashDelay;            // ЗАМАХ: задержка до начала движения (в секундах)
-        public float dashDuration;            // РЫВОК: сколько секунд длится движение вперед
-        public float postDashDelay;           // ВОССТАНОВЛЕНИЕ: задержка после движения до конца атаки
-
-        [Header("Movement Settings")]
-        public float moveSpeedMultiplier;     // Множитель скорости рывка
-        public float accelerationMultiplier;  // Множитель резкости старта рывка
+        public string triggerName;
+        public float preDashDelay;
+        public float dashDuration;
+        public float postDashDelay;
+        public float moveSpeedMultiplier;
+        public float accelerationMultiplier;
     }
 
     [Header("Components")]
@@ -36,7 +33,6 @@ public class TopDownCharacterController : MonoBehaviour
     public KeyCode[] standUpKeys;
 
     [Header("Input Buffer Settings")]
-    [Tooltip("Время (в секундах), в течение которого нажатие кнопки сохраняется в памяти")]
     public float inputBufferTime = 0.25f;
 
     [Header("Movement Settings")]
@@ -70,14 +66,10 @@ public class TopDownCharacterController : MonoBehaviour
     private bool isAttacking;
     private bool isDashing;
     private int currentAttackIndex;
-
     private float preDashTimer;
     private float dashTimer;
     private float postDashTimer;
-
     private Vector3 attackMoveDirection;
-
-    // Таймеры буфера ввода
     private float jumpBufferTimer;
     private float crouchBufferTimer;
     private float attackBufferTimer;
@@ -90,10 +82,12 @@ public class TopDownCharacterController : MonoBehaviour
 
     void Update()
     {
+        // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Не выполняем ввод для чужих персонажей
+        if (!photonView.IsMine) return;
+
         if (motor == null || playerTransform == null) return;
 
         UpdateInputBuffers();
-
         HandleJump();
         HandleCrouch();
         HandleAttack();
@@ -103,7 +97,9 @@ public class TopDownCharacterController : MonoBehaviour
         realTimeSpeed = motor.GetHorizontalSpeed();
     }
 
-    // НОВЫЙ МЕТОД: Обновление таймеров памяти нажатий
+    // --- Все остальные методы остаются БЕЗ ИЗМЕНЕНИЙ ---
+    // (Я опустил их для краткости, чтобы вы просто заменили существующий класс)
+
     void UpdateInputBuffers()
     {
         if (Input.GetKeyDown(jumpKey)) jumpBufferTimer = inputBufferTime;
@@ -142,10 +138,9 @@ public class TopDownCharacterController : MonoBehaviour
             return;
         }
 
-        // ИСПОЛЬЗУЕМ БУФЕР ВМЕСТО GetKeyDown
         if (crouchBufferTimer > 0f && !Input.GetKey(sprintKey))
         {
-            crouchBufferTimer = 0f; // Сбрасываем буфер после использования
+            crouchBufferTimer = 0f;
             SetCrouch(!isCrouching);
         }
     }
@@ -157,10 +152,9 @@ public class TopDownCharacterController : MonoBehaviour
 
     void HandleJump()
     {
-        // ИСПОЛЬЗУЕМ БУФЕР ВМЕСТО GetKeyDown
         if (jumpBufferTimer > 0f && motor.IsGrounded && !isCrouching && !isAttacking)
         {
-            jumpBufferTimer = 0f; // Сбрасываем буфер после использования
+            jumpBufferTimer = 0f;
             motor.RequestJump(jumpForce);
 
             if (animator != null && !string.IsNullOrEmpty(jumpTriggerName))
@@ -173,10 +167,9 @@ public class TopDownCharacterController : MonoBehaviour
         if (animator == null || attackTriggerNames == null || attackTriggerNames.Length == 0)
             return;
 
-        // 1. СТАРТ С НУЛЯ: ИСПОЛЬЗУЕМ БУФЕР ВМЕСТО GetKeyDown
         if (!isAttacking && attackBufferTimer > 0f && motor.IsGrounded)
         {
-            attackBufferTimer = 0f; // Сбрасываем буфер после использования
+            attackBufferTimer = 0f;
             currentAttackIndex = 0;
             StartNextAttack();
             return;
@@ -185,8 +178,6 @@ public class TopDownCharacterController : MonoBehaviour
         if (!isAttacking) return;
 
         AttackTriggerData currentStep = attackTriggerNames[currentAttackIndex];
-
-        // --- ЛОГИКА ОБРАБОТКИ ТРЁХ ФАЗ ---
 
         if (preDashTimer > 0f)
         {
@@ -224,7 +215,6 @@ public class TopDownCharacterController : MonoBehaviour
             motor.SetMoveData(Vector3.zero, false, 0f, 0f, acceleration);
         }
 
-        // --- ПОВОРОТ ПЕРСОНАЖА С ГЛОБАЛЬНЫМ МНОЖИТЕЛЕМ ДЛЯ ВСЕХ АТАК ---
         if (isAttacking)
         {
             Vector3 currentLookDirection = GetAttackDirectionInput();
@@ -234,7 +224,6 @@ public class TopDownCharacterController : MonoBehaviour
                 Quaternion lookRotation = Quaternion.LookRotation(currentLookDirection);
                 Quaternion targetRotation = lookRotation * GetAxisOffset();
 
-                // Умножаем глобальную скорость на твой глобальный множитель
                 playerTransform.rotation = Quaternion.RotateTowards(
                     playerTransform.rotation,
                     targetRotation,
@@ -243,13 +232,11 @@ public class TopDownCharacterController : MonoBehaviour
             }
         }
 
-        // --- ЖЕСТКАЯ ПРОВЕРКА ЗАВЕРШЕНИЯ ВСЕЙ АТАКИ ---
         if (preDashTimer <= 0f && !isDashing && postDashTimer <= 0f)
         {
-            // Переходим к следующему удару комбо, если кнопка УДЕРЖИВАЕТСЯ ИЛИ нажатие сохранено в буфере
             if (Input.GetKey(attackKey) || attackBufferTimer > 0f)
             {
-                attackBufferTimer = 0f; // Очищаем буфер, чтобы нажатие не "перетекло" дальше
+                attackBufferTimer = 0f;
 
                 currentAttackIndex++;
                 if (currentAttackIndex >= attackTriggerNames.Length)
@@ -401,16 +388,11 @@ public class TopDownCharacterController : MonoBehaviour
     {
         switch (modelForwardAxis)
         {
-            case ForwardAxis.X:
-                return Quaternion.Euler(0, -90, 0);
-            case ForwardAxis.MinusX:
-                return Quaternion.Euler(0, 90, 0);
-            case ForwardAxis.Z:
-                return Quaternion.identity;
-            case ForwardAxis.MinusZ:
-                return Quaternion.Euler(0, 180, 0);
-            default:
-                return Quaternion.identity;
+            case ForwardAxis.X: return Quaternion.Euler(0, -90, 0);
+            case ForwardAxis.MinusX: return Quaternion.Euler(0, 90, 0);
+            case ForwardAxis.Z: return Quaternion.identity;
+            case ForwardAxis.MinusZ: return Quaternion.Euler(0, 180, 0);
+            default: return Quaternion.identity;
         }
     }
 

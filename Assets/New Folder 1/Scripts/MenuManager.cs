@@ -1,33 +1,47 @@
-using Photon.Pun;
+п»їusing Photon.Pun;
 using Photon.Realtime;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MenuManager : MonoBehaviourPunCallbacks
 {
+    [Header("Inputs")]
     public TMP_InputField createField;
     public TMP_InputField joinField;
-    public Transform roomListContent;
 
-    // Ссылаемся сразу на компонент RoomListing, а не на GameObject
-    public RoomListing roomListItemPrefab;
+    [Header("Buttons")]
+    public Button createButton;
+    public Button joinButton;
+
+    [Header("Room List UI")]
+    public GameObject roomListContent;
+    public GameObject roomListItemPrefab;
+
+    [Header("Settings")]
     public int maxPlayers = 10;
-
-    [SerializeField] private string gameSceneName = "Game"; // Убрали магическую строку "1"
-
-    // Список для пулинга объектов (кэшируем UI элементы)
-    private List<RoomListing> _roomListings = new List<RoomListing>();
+    public string sceneToLoad = "GameScene"; // в†ђ СЃС†РµРЅР° РґР»СЏ Р·Р°РіСЂСѓР·РєРё (Р·Р°РґР°С‘С‚СЃСЏ РІ РёРЅСЃРїРµРєС‚РѕСЂРµ)
 
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Confined;
+
         PhotonNetwork.JoinLobby();
+
+        // РїСЂРёРІСЏР·РєР° РєРЅРѕРїРѕРє
+        if (createButton != null)
+            createButton.onClick.AddListener(CreateRoom);
+
+        if (joinButton != null)
+            joinButton.onClick.AddListener(JoinRoom);
     }
 
     public void CreateRoom()
     {
-        RoomOptions roomOptions = new RoomOptions { MaxPlayers = maxPlayers };
+        RoomOptions roomOptions = new RoomOptions();
+        roomOptions.MaxPlayers = maxPlayers;
+
         PhotonNetwork.CreateRoom(createField.text, roomOptions, null);
     }
 
@@ -38,40 +52,32 @@ public class MenuManager : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        PhotonNetwork.LoadLevel(gameSceneName);
+        PhotonNetwork.LoadLevel(sceneToLoad);
     }
 
     public override void OnRoomListUpdate(List<RoomInfo> roomList)
     {
-        // 1. Скрываем все плашки (без Destroy!)
-        foreach (var item in _roomListings)
+        foreach (Transform child in roomListContent.transform)
         {
-            item.gameObject.SetActive(false);
+            Destroy(child.gameObject);
         }
 
-        // 2. Обновляем нужные или создаем новые
-        int index = 0;
         foreach (RoomInfo room in roomList)
         {
-            if (room.RemovedFromList) continue; // Игнорируем закрытые комнаты
+            GameObject roomItem = Instantiate(roomListItemPrefab, roomListContent.transform);
 
-            RoomListing roomItem;
+            TMP_Text roomText = roomItem.GetComponent<TMP_Text>();
+            roomText.text = room.Name + " (" + room.PlayerCount + "/" + room.MaxPlayers + ")";
 
-            // Если плашек не хватает — создаем новую
-            if (index >= _roomListings.Count)
-            {
-                roomItem = Instantiate(roomListItemPrefab, roomListContent);
-                _roomListings.Add(roomItem);
-            }
-            else
-            {
-                // Иначе берем существующую
-                roomItem = _roomListings[index];
-                roomItem.gameObject.SetActive(true);
-            }
+            Button joinBtn = roomItem.transform.Find("Con").GetComponent<Button>();
 
-            roomItem.SetRoomInfo(room);
-            index++;
+            string roomName = room.Name;
+            joinBtn.onClick.AddListener(() => JoinSpecificRoom(roomName));
         }
+    }
+
+    private void JoinSpecificRoom(string roomName)
+    {
+        PhotonNetwork.JoinRoom(roomName);
     }
 }

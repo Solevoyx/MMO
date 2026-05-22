@@ -9,12 +9,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9f3758f8f58fdef43803eb9be1df0608, type: 3}
-  m_Name: PhotonServerSettings
+  m_Script: {fileID: 1878438611, guid: 7de3b8b9e1263ad479e2d0c4261b7646, type: 3}
+  m_Name: PhotonAppSettings
   m_EditorClassIdentifier: 
   AppSettings:
-    AppIdRealtime: cc125d27-90a4-4da0-8903-536dcbe44636
-    AppIdFusion: 
+    AppIdFusion: 23666d05-5869-4d23-a8a7-902a4bb63910
     AppIdChat: 
     AppIdVoice: 
     AppVersion: 
@@ -27,19 +26,5 @@ MonoBehaviour:
     EnableProtocolFallback: 1
     AuthMode: 0
     EnableLobbyStatistics: 0
-    NetworkLogging: 1
-  DevRegion: eu
-  PunLogging: 0
-  EnableSupportLogger: 0
-  RunInBackground: 1
-  StartInOfflineMode: 0
-  RpcList:
-  - ClickRpc
-  - DestroyRpc
-  - DestroySpaceship
-  - Fire
-  - RespawnSpaceship
-  - RPC_TriggerAnimation
-  DisableAutoOpenWizard: 1
-  ShowSettings: 0
-  DevRegionSetOnce: 1
+    encryptionMode: 0
+    emptyRoomTtl: 0
