@@ -8,6 +8,7 @@ public class TopDownCharacterController : MonoBehaviourPun
     [System.Serializable]
     public struct AttackTriggerData
     {
+        public int id;
         public string triggerName;
         public float preDashDelay;
         public float dashDuration;
@@ -61,6 +62,8 @@ public class TopDownCharacterController : MonoBehaviourPun
     public string attackingBoolName = "isAttack";
 
     public AttackTriggerData[] attackTriggerNames;
+
+    public System.Action<int> OnAttackEvent;
 
     private bool isCrouching;
     private bool isAttacking;
@@ -273,6 +276,7 @@ public class TopDownCharacterController : MonoBehaviourPun
         if (!string.IsNullOrEmpty(currentStep.triggerName))
         {
             animator.SetTrigger(currentStep.triggerName);
+            OnAttackEvent?.Invoke(currentStep.id);
         }
 
         attackMoveDirection = GetAttackDirectionInput();

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class MMOCamera : MonoBehaviour
 {
@@ -52,7 +53,13 @@ public class MMOCamera : MonoBehaviour
     void Update()
     {
         if (Input.GetMouseButtonDown(0))
-            SetCameraState(true);
+        {
+            // если клик НЕ по UI
+            if (!EventSystem.current.IsPointerOverGameObject())
+            {
+                SetCameraState(true);
+            }
+        }
 
         foreach (var key in disableCameraKeys)
         {

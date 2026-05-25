@@ -58,6 +58,10 @@ public class DisconnectUIManager : MonoBehaviourPunCallbacks
 
         SetDisconnectObjects(true);
         alreadyForceDisconnected = false;
+
+        // 👉 только включаем курсор
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
     }
 
     private void SetDisconnectObjects(bool state)

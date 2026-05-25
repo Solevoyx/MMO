@@ -40,6 +40,14 @@ MonoBehaviour:
   - Fire
   - RespawnSpaceship
   - RPC_TriggerAnimation
+  - SetTeamRPC
+  - TakeDamageRPC
+  - ApplyTeamRPC
+  - SyncHealthRPC
+  - RespawnAllRPC
+  - RespawnPlayerRPC
+  - DieRPC
+  - RespawnRPC
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1

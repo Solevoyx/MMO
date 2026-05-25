@@ -6,26 +6,34 @@ using UnityEngine.SceneManagement;
 
 public class Connection : MonoBehaviourPunCallbacks
 {
-    [SerializeField] private string sceneName; // имя сцены меню
+    [SerializeField] private string sceneName;
 
     [Header("Reconnect Settings")]
     [SerializeField] private int maxReconnectTries = 5;
     [SerializeField] private float reconnectDelay = 2f;
+
+    [Header("Objects")]
+    [SerializeField] private GameObject[] connectedObjects;
+    [SerializeField] private GameObject[] disconnectedObjects;
 
     private int reconnectTries = 0;
     private bool isConnecting = false;
 
     void Start()
     {
+        SetConnectionState(false);
         Connect();
     }
 
     private void Connect()
     {
-        if (isConnecting) return;
+        if (isConnecting)
+            return;
 
         isConnecting = true;
+
         Debug.Log("Trying to connect to Photon...");
+
         PhotonNetwork.ConnectUsingSettings();
     }
 
@@ -36,6 +44,8 @@ public class Connection : MonoBehaviourPunCallbacks
         reconnectTries = 0;
         isConnecting = false;
 
+        SetConnectionState(true);
+
         SceneManager.LoadScene(sceneName);
     }
 
@@ -44,6 +54,8 @@ public class Connection : MonoBehaviourPunCallbacks
         Debug.Log("Disconnected: " + cause);
 
         isConnecting = false;
+
+        SetConnectionState(false);
 
         if (reconnectTries < maxReconnectTries)
         {
@@ -63,5 +75,22 @@ public class Connection : MonoBehaviourPunCallbacks
         yield return new WaitForSeconds(reconnectDelay);
 
         Connect();
+    }
+
+    private void SetConnectionState(bool connected)
+    {
+        // Включаются при подключении
+        foreach (GameObject obj in connectedObjects)
+        {
+            if (obj != null)
+                obj.SetActive(connected);
+        }
+
+        // Включаются при отключении
+        foreach (GameObject obj in disconnectedObjects)
+        {
+            if (obj != null)
+                obj.SetActive(!connected);
+        }
     }
 }

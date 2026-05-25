@@ -2435,7 +2435,7 @@ MonoBehaviour:
   objectsOnDisconnect: []
   menuButtons:
   - {fileID: 1178133307}
-  menuSceneName: Menu
+  menuSceneName: Connect
   forceDisconnect: 0
 --- !u!1 &1621202328
 GameObject:

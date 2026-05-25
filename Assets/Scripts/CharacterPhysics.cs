@@ -1,7 +1,9 @@
-using UnityEngine;
+п»їusing UnityEngine;
+using Photon.Pun;
 
 [RequireComponent(typeof(CharacterController))]
-public class CharacterPhysicsMotor : MonoBehaviour
+[RequireComponent(typeof(PhotonView))]
+public class CharacterPhysicsMotor : MonoBehaviourPun
 {
     [Header("References")]
     public CharacterController controller;
@@ -15,20 +17,28 @@ public class CharacterPhysicsMotor : MonoBehaviour
 
     private Vector3 smoothVelocity;
     private Vector3 verticalVelocity;
+
     private bool jumpRequested;
     private float jumpForce;
 
     [Header("Gravity Settings")]
     public float gravity = -20f;
-   
 
-    // Свойство для получения состояния земли в контроллере
     public bool IsGrounded => controller.isGrounded;
 
     void Awake()
     {
         if (controller == null)
             controller = GetComponent<CharacterController>();
+    }
+
+    void Update()
+    {
+        // рџ”Ґ РљР›Р®Р§Р•Р’РћР™ Р¤РРљРЎ: С‚РѕР»СЊРєРѕ РІР»Р°РґРµР»РµС† СЃРёРјСѓР»РёСЂСѓРµС‚ РґРІРёР¶РµРЅРёРµ
+        if (!photonView.IsMine)
+            return;
+
+        ApplyMovement();
     }
 
     public void SetMoveData(Vector3 moveInput, bool isSprinting, float moveSpeed, float sprintSpeed, float acceleration)
@@ -40,21 +50,21 @@ public class CharacterPhysicsMotor : MonoBehaviour
         this.acceleration = acceleration;
     }
 
-    void Update()
-    {
-        ApplyMovement();
-    }
-
     void ApplyMovement()
     {
         float targetSpeed = sprint ? sprintSpeed : moveSpeed;
         Vector3 targetVelocity = input * targetSpeed;
 
+        // --- Smooth movement ---
         Vector3 velocityDiff = targetVelocity - smoothVelocity;
 
         if (velocityDiff.sqrMagnitude > 0.0001f)
         {
-            Vector3 accelStep = Vector3.ClampMagnitude(velocityDiff, acceleration * Time.deltaTime);
+            Vector3 accelStep = Vector3.ClampMagnitude(
+                velocityDiff,
+                acceleration * Time.deltaTime
+            );
+
             smoothVelocity += accelStep;
         }
         else
@@ -62,23 +72,24 @@ public class CharacterPhysicsMotor : MonoBehaviour
             smoothVelocity = targetVelocity;
         }
 
-        // Прыжок
+        // --- Jump ---
         if (jumpRequested && IsGrounded)
         {
             verticalVelocity.y = jumpForce;
             jumpRequested = false;
         }
 
-        // Гравитация
+        // --- Gravity ---
         verticalVelocity.y += gravity * Time.deltaTime;
 
-        // СТАБИЛИЗАЦИЯ ЗЕМЛИ (ОДИН РАЗ!)
+        // --- Ground stabilisation ---
         if (IsGrounded && verticalVelocity.y < 0f)
         {
-            verticalVelocity.y = -1f;
+            verticalVelocity.y = -2f;
         }
 
         Vector3 finalVelocity = smoothVelocity + verticalVelocity;
+
         controller.Move(finalVelocity * Time.deltaTime);
     }
 
